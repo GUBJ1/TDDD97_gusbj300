@@ -1,0 +1,30 @@
+<html>
+
+<head>
+    <link href="profile.css" type="text/css" rel="stylesheet">
+    <script src="client.js" type="text/javascript"></script>
+    <script src="serverstub.js" type="text/javascript"></script>
+</head>
+
+<script type="text/view" id="profileview"></script>
+
+<body>
+    <div class="main-container">
+        <img src="wimage.png" class="wimage" alt="wimage">
+
+        <div class="right_side">
+            <div class="right_side_container" id="login-container">
+                <div class="tabs" id="tabs">
+                    <button onclick="showPanel(1)" class="profile_btn" id="home_btn">Home</button>
+                    <button onclick="showPanel(2)" class="profile_btn" id="browse_btn">Browse</button>
+                    <button onclick="showPanel(3)" class="profile_btn" id="account_btn">Account</button>
+                </div>
+                    <div id="panel1" class="panel">Home</div>
+                    <div id="panel2" class="panel">Browse</div>
+                    <div id="panel3" class="panel">Account</div>
+        </div>
+        </div>
+    </div>
+</body>
+
+</html>
