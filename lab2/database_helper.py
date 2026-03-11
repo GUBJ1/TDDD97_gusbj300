@@ -22,4 +22,8 @@ def quit():
 def signIn(data_json):
     email = data_json.get("username")
     password = data_json.get("password")
-    in = getDb().execute("SELECT * FROM users WHERE email=?")
+    cursor = getDb().execute("SELECT * FROM users WHERE email=?",(email))
+    user = cursor.fetchome()
+    cursor.close
+    if user == None:
+        return {"succes": False, "message": "User not found."}

@@ -1,4 +1,6 @@
-from flask import Flask
+from flask import Flask, request, jsonify
+import json
+import database_helper
 
 app = Flask(__name__)
 
@@ -11,4 +13,17 @@ if __name__ == "__main__":
 
 
 @app.route("/signIn", methods=["POST"])
-def signIn():
+def signIn_route():
+    email = request.form['logInEmail']
+    password = request.form['password']
+    result = signIn_route({"username": email, "password": password})
+
+    if result["success"] == False:
+        return jsonify(result), 401
+    
+    return jsonify(result), 200
+    
+
+    
+
+    
