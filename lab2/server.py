@@ -8,22 +8,68 @@ app = Flask(__name__)
 def hello():
     return "Hello Flask!"
 
-if __name__ == "__main__":
-    app.run(debug=True)
+
 
 
 @app.route("/signIn", methods=["POST"])
 def signIn_route():
-    email = request.form['logInEmail']
-    password = request.form['password']
-    result = signIn_route({"username": email, "password": password})
+    result = database_helper.signIn(request.json)
 
     if result["success"] == False:
         return jsonify(result), 401
     
     return jsonify(result), 200
     
+@app.route("/signUp", methods=["POST"])
+def signUp_route():
+    result = database_helper.signUp(request.json)
 
+    if result["success"] == False:
+        return jsonify(result), 400
+
+    return jsonify(result), 200
     
 
+
+@app.route("/signOut", methods=["POST"])
+def signOut_route():
+    token = request.headers.get("Authorization")
+
+    result = database_helper.signOut(token)
+
+    if result["success"] == False:
+        return jsonify(result), 400
     
+    return jsonify(result), 200
+
+
+@app.route("/changePassword", methods=["POST"])
+def changePassword_route():
+    token = request.headers.get("Authorization")
+
+    result = database_helper.changePassword(token, request.json)
+    if result["success"] == False:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200
+    
+
+@app.route("/getUserDataByToken", methods=["GET"])
+def getUserDataByToken_route():
+    token = request.headers.get("Authorization")
+
+    result = database_helper.getUserDataByToken(token)
+    print(result)
+    if result["success"] == False:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200
+    
+
+
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
