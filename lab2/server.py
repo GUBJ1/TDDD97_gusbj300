@@ -64,11 +64,58 @@ def getUserDataByToken_route():
         return jsonify(result), 400
     
     return jsonify(result), 200
+
+
+@app.route("/getUserDataByEmail", methods=["GET"])
+def getUserDataByEmail_route():
+    token = request.headers.get("Authorization")
+    email = request.args.get("email")
+
+    result = database_helper.getUserDataByEmail(token, email)
+
+    if result["success"] == False:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200
     
 
+@app.route("/getUserMessageByToken", methods=["GET"])
+def getUserMessageByToken_route():
+    token = request.headers.get("Authorization")
+
+    result = database_helper.getUserMessageByToken(token)
+
+    if result["success"] == False:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200
 
 
+@app.route("/getUserMessageByEmail", methods=["GET"])
+def getUserMessageByEmail_route():
+    token = request.headers.get("Authorization")
+    email = request.args.get("email")
 
+    result = database_helper.getUserMessageByEmail(token, email)
+
+    if result["success"] == False:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200
+
+
+@app.route("/postMessage", methods=["POST"])
+def postMessage_route():
+    token = request.headers.get("Authorization")
+
+    result = database_helper.postMessage(token, request.json)
+
+    if result["success"] == False:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200
+
+    
 if __name__ == "__main__":
     app.run(debug=True)
 

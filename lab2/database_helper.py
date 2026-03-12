@@ -117,7 +117,6 @@ def changePassword(token, data_json):
 def getUserDataByToken(token):
     email = signedInUsers.get(token)
     cursor = getDb().execute("SELECT * FROM users WHERE email=?",(email,)) 
-
     row = cursor.fetchone()
     cursor.close()
 
@@ -127,12 +126,14 @@ def getUserDataByToken(token):
     return {"success": True, "message": "User found!", "data": dict(row)}
 
         
-def getUserDataByEmail(token, email)
+def getUserDataByEmail(token, email):
+
+    print("EMAIL:", repr(email))
+
     if signedInUsers.get(token) is None:
         return {"success": False, "message": "Token erröör"}
     
     cursor = getDb().execute("SELECT * FROM users WHERE email=?",(email,)) 
-
     row = cursor.fetchone()
     cursor.close()
 
@@ -141,5 +142,65 @@ def getUserDataByEmail(token, email)
     
     return {"success": True, "message": "success!", "data": dict(row)}
     
+
+def getUserMessageByToken(token):
+
+    email = signedInUsers.get(token)
+    cursor = getDb().execute("SELECT message FROM messages WHERE sender=?",(email,))
+    rows = cursor.fetchall()
+    cursor.close()
+
+    messages = [dict(row) for row in rows]
+
+    if email is None:
+        return {"success": False, "message": "Incorrect token"}
     
+    return {"success": True, "message": "yay found message", "data": messages}
+
+
+def getUserMessageByEmail(token, email):
+
+    if signedInUsers.get(token) is None:
+        return {"success": False, "message": "Token erröör"}
+    
+    cursor = getDb().execute("SELECT message FROM messages WHERE sender=?",(email,))
+    rows = cursor.fetchall()
+    cursor.close()
+
+    messages = [dict(row) for row in rows]
+
+    
+    return {"success": True, "message": "yay found message", "data": messages}
+
+    
+def postMessage(token, data_json):
+        
+    if signedInUsers.get(token) is None:
+        return {"success": False, "message": "Token erröör"}
+    
+    message = data_json.get("message")
+    sender = signedInUsers.get(token)
+    reciever = data_json.get("wall")
+
+    if len(message) == 0:
+        return {"success": False, "message": "Cant post empty message"}
+
+    cursor = getDb().execute("SELECT email FROM users WHERE email=?",(reciever,))
+    row = cursor.fetchone()
+    cursor.close()
+
+    if row is None:
+        return {"success": False, "message": "User doesnt exist :("}
+    
+    
+    cursor = getDb().execute("INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?)",(sender, reciever, message))
+    getDb().commit()
+    cursor.close()
+
+    return {"success": True, "message": "posted to wall"}
+
+
+    
+
+
                                             
