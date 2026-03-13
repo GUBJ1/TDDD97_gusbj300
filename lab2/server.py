@@ -30,9 +30,10 @@ def signIn_route():
     
     token = database_helper.generateToken()
     signedInUsers[token] = email
-    print("TOKEN: ", token)
+    response = jsonify({"success": True, "message": "Signed in!,"})
+    response.headers["Authorization"] = token
 
-    return {"success": True, "message": "Signed in!"}, 200
+    return response, 200
 
     
 @app.route("/signUp", methods=["POST"])
@@ -61,33 +62,20 @@ def signUp_route():
     
     return {"success": True, "message": "User created!"}, 200
     
-        
-    
-
 
 @app.route("/signOut", methods=["POST"])
 def signOut_route():
     token = request.headers.get("Authorization")
 
-    result = database_helper.signOut(token)
+    print("token:", token)
+    print("inloggaed 2:", signedInUsers)
 
-    if result["success"] == False:
-        return jsonify(result), 400
+    if token not in signedInUsers:
+        return {"success": False, "message": "Invalid token"}, 401
     
-    return jsonify(result), 200
+    signedInUsers.pop(token)
+    return {"success": True, "message": "Succesfully signed out"}, 200
 
-
-
-
-# @app.route("/changePassword", methods=["POST"])
-# def changePassword_route():
-#     token = request.headers.get("Authorization")
-
-#     result = database_helper.changePassword(token, request.json)
-#     if result["success"] == False:
-#         return jsonify(result), 400
-    
-#     return jsonify(result), 200
 
 @app.route("/changePassword", methods=["POST"])
 def changePassword_route():
@@ -123,62 +111,96 @@ def changePassword_route():
 def getUserDataByToken_route():
     token = request.headers.get("Authorization")
 
-    result = database_helper.getUserDataByToken(token)
-    print(result)
-    if result["success"] == False:
-        return jsonify(result), 400
+    if token not in signedInUsers:
+        return {"success": False, "message": "Invalid token!"}, 401
+
+    email = signedInUsers.get(token)
+    result = database_helper.findUserByEmail(email)
+
+    if result is None:
+        return {"success": False, "message": "user not found"}, 401
     
-    return jsonify(result), 200
+
+    return jsonify({"success": True, "message": "User found", "data": dict(result)}), 200
 
 
 @app.route("/getUserDataByEmail", methods=["GET"])
 def getUserDataByEmail_route():
+    data = request.json
     token = request.headers.get("Authorization")
-    email = request.args.get("email")
-
-    result = database_helper.getUserDataByEmail(token, email)
-
-    if result["success"] == False:
-        return jsonify(result), 400
+    if token not in signedInUsers:
+        return {"success": False, "message": "Invalid token!"}, 401
     
-    return jsonify(result), 200
+    email = data.get("email")
+    result = database_helper.findUserByEmail(email)
     
+    if result is None:
+        return {"success": False, "message": "user not found"}, 401
+
+
+    return jsonify({"success": True, "message": "User found", "data": dict(result)}), 200
+
 
 @app.route("/getUserMessageByToken", methods=["GET"])
-def getUserMessageByToken_route():
+def getUserMessageByToken():
     token = request.headers.get("Authorization")
 
-    result = database_helper.getUserMessageByToken(token)
-
-    if result["success"] == False:
-        return jsonify(result), 400
+    if token not in signedInUsers:
+        return {"success": False, "message": "Invalid token!"}, 401
     
-    return jsonify(result), 200
+    email = signedInUsers.get(token)
+    result = database_helper.getUserMsg(email)
+    messages = [dict(row) for row in result]
 
+    if result is None:
+        return {"success": False, "message": "user not found"}, 401
+    
+    return jsonify({"success": True, "message": "User found", "data": messages}), 200
 
+    
 @app.route("/getUserMessageByEmail", methods=["GET"])
 def getUserMessageByEmail_route():
+    data = request.json
     token = request.headers.get("Authorization")
-    email = request.args.get("email")
+    if token not in signedInUsers:
+        return {"success": False, "message": "Invalid token!"}, 401
 
-    result = database_helper.getUserMessageByEmail(token, email)
+    email = data.get("email")
+    result = database_helper.getUserMsg(email)
+    messages = [dict(row) for row in result]
 
-    if result["success"] == False:
-        return jsonify(result), 400
+    if result is None:
+        return {"success": False, "message": "user not found"}, 401
     
-    return jsonify(result), 200
+    return jsonify({"success": True, "message": "User found", "data": messages}), 200
 
 
 @app.route("/postMessage", methods=["POST"])
 def postMessage_route():
+    data = request.json
     token = request.headers.get("Authorization")
-
-    result = database_helper.postMessage(token, request.json)
-
-    if result["success"] == False:
-        return jsonify(result), 400
+    if token not in signedInUsers:
+        return {"success": False, "message": "Invalid token!"}, 401
     
-    return jsonify(result), 200
+    email = signedInUsers[token]
+    
+    message = data.get("message")
+    receiver = data.get("receiver")
+
+    if len(message) == 0:
+        return {"success": False, "message": "Message is empty"}, 401
+    
+    result = database_helper.createMessage(email, receiver, message)
+
+    if result == False:
+        return{"success": False, "message": "FEEEEEEL"}, 401
+    
+    return{"success": True, "message": "yay posted"}, 200
+
+
+
+    
+
 
     
 if __name__ == "__main__":
