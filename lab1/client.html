@@ -42,8 +42,8 @@
                             </div>
                             <div class="form-row">
                                 <label for="gender">Gender</label>
-                                <select id="gender" name="gender" class="input">
-                                    <option value="">Select gender</option>
+                                <select id="gender" name="gender" class="input" required>
+                                    <option value=""disabled selected>Select gender</option>
                                     <option value="female">Female</option>
                                     <option value="male">Male</option>
                                     <option value="other">Other</option>
@@ -63,11 +63,11 @@
                             </div>
                             <div class="form-row">
                                 <label for="signUpPassword">Password</label>
-                                <input type="password" id="signUpPassword" name="signUpPassword" class="input required">
+                                <input type="password" id="signUpPassword" name="signUpPassword" class="input" required>
                             </div>
                             <div class="form-row">
                                 <label for="repeatPassword">repeat PSW</label>
-                                <input type="password" id="repeatPassword" name="repeatPassword" class="input required">
+                                <input type="password" id="repeatPassword" name="repeatPassword" class="input" required>
                             </div>
                         </div>
                         <div id="signUpMessage">
@@ -90,7 +90,7 @@
                     <button onclick="showPanel(3)" class="profile_btn" >Account</button>
                 </div>
             </div>
-            <div id="panel1" class="panel" style="display:none;">
+            <div id="panel1" class="panel">
                 <div id="Home">
                     <div id="listInfo">
                         <p>First name: <span id="profileFirstName"></span></p>
