@@ -52,6 +52,9 @@ def signIn_route():
     password = data.get("password")
     result = database_helper.findUserByEmail(email)
 
+    if not data:
+        return {"message": "missing input"}, 400
+
     if result is None:
         print("fel mail tihi")
         return {"success": False, "message": "User not found"}, 401
@@ -78,6 +81,7 @@ def signIn_route():
 
     return response, 200
 
+
     
 @app.route("/signUp", methods=["POST"])
 def signUp_route():
@@ -91,37 +95,48 @@ def signUp_route():
     country = data.get("country")
     emailPattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' #kollar mail format
 
+    existing = database_helper.findUserByEmail(email)
+
     if None in([email, password, firstName, familyName, gender, city, country]):
-        return {"success": False, "message": "Missing input"}
+        return {"success": False, "message": "Missing input"}, 400
     elif not re.match(emailPattern, email):
-        return {"success": False, "message": "Incorrect email format"}
+        return {"success": False, "message": "Incorrect email format"}, 400
     elif len(password) < 6:
-        return {"success": False, "message": "Password is too short"}
+        return {"success": False, "message": "Password is too short"}, 400
+    if existing is not None:
+        return {"message": "user_exists"}, 409
 
     result = database_helper.createUser(email, password, firstName, familyName, gender, city, country)
 
     if result == False:
         return {"success": False, "message": "Database ERROR!"}, 401
     
-    return {"success": True, "message": "User created!"}, 200
+    return {"success": True, "message": "User created!"}, 201
     
 
 @app.route("/signOut", methods=["POST"])
 def signOut_route():
     token = request.headers.get("Authorization")
 
-
     print("token:", token)
     print("inloggaed 2:", signedInUsers)
 
-    email = signedInUsers.get(token)
-    if email is None:
-        return {"success": False, "message": "Invalid token"}, 401
 
-    signedInUsers.pop(token, None)
+
+    if not token:
+        return {"success": False, "message": "Missing token"}, 400
+    
+    if token not in signedInUsers:
+        return {"message": "invalid token"}, 401
+
+    print(userTokens)
+    email = signedInUsers.pop(token, None)
+    print(userTokens)
 
     if userTokens.get(email) == token:
         userTokens.pop(email, None)
+    print(userTokens)
+
 
     return {"success": True, "message": "Successfully signed out"}, 200
 
@@ -135,6 +150,8 @@ def changePassword_route():
 
     print("token,",token)
     email = signedInUsers.get(token)
+    print("email,", email)
+
 
     print("email,",email)
     if email is None:
@@ -143,15 +160,15 @@ def changePassword_route():
     result = database_helper.findUserByEmail(email)
 
     if result["password"] != oldPassword:
-        return {"success": False, "message": "fel lösen"}, 401
+        return {"success": False, "message": "fel lösen"}, 400
     
     if len(newPassword) < 6:
-        return {"success": False, "message": "för kort lösen"}, 401
+        return {"success": False, "message": "för kort lösen"}, 400
     
     update = database_helper.changePassword(email, newPassword)
 
     if update == False:
-        return {"success": False, "message": "Database ERROR!"}, 401
+        return {"success": False, "message": "Database ERROR!"}, 500
     
     return {"success": True, "message": "Password Changed!"}, 200
     
@@ -167,7 +184,7 @@ def getUserDataByToken_route():
     result = database_helper.findUserByEmail(email)
 
     if result is None:
-        return {"success": False, "message": "user not found"}, 401
+        return {"success": False, "message": "user not found"}, 404
     
 
     return jsonify({"success": True, "message": "User found", "data": dict(result)}), 200
@@ -183,7 +200,7 @@ def getUserDataByEmail_route():
     result = database_helper.findUserByEmail(email)
     
     if result is None:
-        return {"success": False, "message": "user not found"}, 401
+        return {"success": False, "message": "user not found"}, 404
 
 
     return jsonify({"success": True, "message": "User found", "data": dict(result)}), 200
@@ -218,7 +235,7 @@ def getUserMessageByEmail_route():
     messages = [dict(row) for row in result]
 
     if result is None:
-        return {"success": False, "message": "user not found"}, 401
+        return {"success": False, "message": "user not found"}, 404
     
     print(messages)
     
@@ -241,17 +258,17 @@ def postMessage_route():
     print("email", email, "message", message, "receiver",receiver)
 
     if len(message) == 0:
-        return {"success": False, "message": "Message is empty"}, 401
+        return {"success": False, "message": "Message is empty"}, 400
 
     result = database_helper.createMessage(email, receiver, message)
 
     if result == False:
-        return{"success": False, "message": "FEEEEEEL"}, 401
+        return{"success": False, "message": "FEEEEEEL"}, 500
     
     return{"success": True, "message": "yay posted"}, 200
 
     
-# if __name__ == "__main__":
-#     app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
 
 
