@@ -1,0 +1,105 @@
+body {
+    margin: 0;
+    background: rgb(63, 150, 216);
+}
+
+.main-container {
+    width: 600px;
+    height: 400px;
+    margin: 100px auto 0;
+    display: flex;
+    gap: 10px;
+}
+
+.wimage {
+    width: 340px;
+    height: 400px;
+    display: block;
+}
+.right_side {
+    width: 250px;
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.right_side_container {
+    background: #fff;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.form-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 4px 0;
+}
+.input {
+    width: 130px;
+    background: rgb(211, 207, 207);
+}
+.btn-row {
+    margin-top: 8px;
+    float: right;
+}
+.tabs {
+    display: flex;
+    gap: 6px;
+}
+
+#profileTopRow{
+    background-color: rgb(108, 108, 108);
+    margin-top: 0;
+    width: 100%;
+
+}
+.profile_btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.profile_btn.active {
+    background-color: black;
+    color: white;
+    font-weight: bold;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+}
+.profileView{
+    background-color: #fff;   
+}
+#signOut{
+    float: right;
+    margin: 10px;
+}
+#home{
+    display: flex;
+    gap: 20px;
+}
+#listInfo{
+    flex: 1;
+    margin-left: 20px;
+}
+#wall{
+    flex: 1;
+}
+#browse{
+    display: flex;
+    margin: 10px;
+}
+#signUpHeader{
+    display: flex;
+    justify-content: center;
+    margin: 0;
+}
+#wallInput {
+    margin-top: 10px;
+}
