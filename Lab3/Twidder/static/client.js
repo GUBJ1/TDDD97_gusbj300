@@ -13,7 +13,16 @@ displayView = function(view){
 window.onload = function(){
     welcomeview = document.getElementById("welcomeview");
     profileview = document.getElementById("profileview");
-    displayView(welcomeview);
+    var savedToken = localStorage.getItem("token");
+
+    if (savedToken) {
+        token = savedToken;
+
+        displayView(profileview);
+        showInfo();
+    } else {
+        displayView(welcomeview);
+    }
 };
 
 function signUp() {
@@ -109,11 +118,10 @@ function signIn(){
                     if (msg) {
                         msg.innerHTML = "You were signed out because your account was used somewhere else.";
                     }
-
                     return;
                 }
             };
-
+            localStorage.setItem("token", token);
             displayView(profileview);
             showInfo();
         }
@@ -358,7 +366,8 @@ function postToOtherWall() {
 }
 
 function reloadOtherWall() {
-    browsingEmail 
+    console.log("browsingEmail:", browsingEmail);
+    var browseMessage = document.getElementById("browseMessage"); 
 
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "/getUserMessageByEmail?email=" + encodeURIComponent(browsingEmail), true);

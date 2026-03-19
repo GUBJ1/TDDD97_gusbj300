@@ -110,19 +110,20 @@ def signUp_route():
 def signOut_route():
     token = request.headers.get("Authorization")
 
+
     print("token:", token)
     print("inloggaed 2:", signedInUsers)
 
-    email = signedInUsers.pop(token)
+    email = signedInUsers.get(token)
+    if email is None:
+        return {"success": False, "message": "Invalid token"}, 401
+
+    signedInUsers.pop(token, None)
 
     if userTokens.get(email) == token:
         userTokens.pop(email, None)
 
-    if token not in signedInUsers:
-        return {"success": False, "message": "Invalid token"}, 401
-    
-    signedInUsers.pop(token)
-    return {"success": True, "message": "Succesfully signed out"}, 200
+    return {"success": True, "message": "Successfully signed out"}, 200
 
 
 @app.route("/changePassword", methods=["POST"])
@@ -250,7 +251,7 @@ def postMessage_route():
     return{"success": True, "message": "yay posted"}, 200
 
     
-if __name__ == "__main__":
-    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(debug=True)
 
 
