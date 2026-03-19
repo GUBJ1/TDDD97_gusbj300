@@ -1,15 +1,19 @@
 from flask import Flask, request, jsonify, g
+from flask_sock import Sock
 import json
 import database_helper
 import re
 
 app = Flask(__name__)
+sock = Sock(app)
 
 @app.route("/")
 def root():
     return app.send_static_file("client.html")
 
 signedInUsers={}
+userTokens = {}    
+userSockets = {}      
 
 @app.teardown_appcontext
 def close_db(exception):
@@ -17,6 +21,28 @@ def close_db(exception):
     if db is not None:
         db.close()
         print("DB connection closed")
+
+@sock.route("/ws")
+def ws_route(ws):
+    token = request.args.get("token")
+
+    if not token or token not in signedInUsers:
+        ws.close()
+        return
+
+    email = signedInUsers[token]
+    userSockets[email] = ws
+
+    try:
+        while True:
+            data = ws.receive()
+            if data is None:
+                break
+    except Exception as e:
+        print("WebSocket error:", e)
+    finally:
+        if userSockets.get(email) == ws:
+            userSockets.pop(email, None)
 
 
 @app.route("/signIn", methods=["POST"])
@@ -34,8 +60,19 @@ def signIn_route():
         print("fel lösen tihi")
         return {"success": False, "message": "Wrong password!"}, 401
     
+    old_token = userTokens.get(email)
+    old_ws = userSockets.get(email)
+
+    if old_ws:
+        old_ws.send(json.dumps({"type": "force_logout"}))
+
+    if old_token:
+        signedInUsers.pop(old_token, None)
+
     token = database_helper.generateToken()
     signedInUsers[token] = email
+    userTokens[email] = token
+
     response = jsonify({"success": True, "message": "Signed in!,"})
     response.headers["Authorization"] = token
 
@@ -75,6 +112,11 @@ def signOut_route():
 
     print("token:", token)
     print("inloggaed 2:", signedInUsers)
+
+    email = signedInUsers.pop(token)
+
+    if userTokens.get(email) == token:
+        userTokens.pop(email, None)
 
     if token not in signedInUsers:
         return {"success": False, "message": "Invalid token"}, 401

@@ -4,6 +4,7 @@ const passwordMinLength = 6;
 const password ="";
 var token;
 var browsingEmail;
+let socket;
 
 displayView = function(view){
     document.getElementById("displayWindow").innerHTML = view.innerHTML;
@@ -72,25 +73,52 @@ function signIn(){
     var username = document.getElementById("logInEmail").value;
     var password = document.getElementById("password").value;
 
-    //var user = serverstub.signIn(username, password);
     var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/signIn", true)
-    xhr.setRequestHeader("Content-Type", "application/json")
-    xhr.onreadystatechange = () =>{
+    xhr.open("POST", "/signIn", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    xhr.onreadystatechange = () => {
         if (xhr.readyState === 4){
             var response = JSON.parse(xhr.responseText);
 
             if (!response.success){
-                console.log("fel");
-                document.getElementById("signInMessage").innerHTML = response.message
-                return
+                document.getElementById("signInMessage").innerHTML = response.message;
+                return;
             }
+
             token = xhr.getResponseHeader("Authorization");
             console.log("Token:", token);
+
+            socket = new WebSocket("ws://localhost:5000/ws?token=" + encodeURIComponent(token));
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === "force_logout") {
+                    token = null;
+                    localStorage.removeItem("token");
+
+                    if (socket) {
+                        socket.close();
+                        socket = null;
+                    }
+
+                    displayView(welcomeview);
+
+                    const msg = document.getElementById("signInMessage");
+                    if (msg) {
+                        msg.innerHTML = "You were signed out because your account was used somewhere else.";
+                    }
+
+                    return;
+                }
+            };
+
             displayView(profileview);
             showInfo();
         }
     };
+
     xhr.send(JSON.stringify({email: username, password: password}));
 }
         
@@ -164,11 +192,14 @@ function signOut() {
                 console.log(response.message);
                 return;
             }
-            console.log(response.message);
+
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
 
             token = null;
             localStorage.removeItem("token");
-
             displayView(welcomeview);
         }
     };
