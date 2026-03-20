@@ -25,6 +25,28 @@ window.onload = function(){
     }
 };
 
+function handleSocketMessage(event) {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "force_logout") {
+        token = null;
+        localStorage.removeItem("token");
+
+        if (socket) {
+            socket.close();
+            socket = null;
+        }
+
+        displayView(welcomeview);
+
+        const msg = document.getElementById("signInMessage");
+        if (msg) {
+            msg.innerHTML = "You were signed out because your account was used somewhere else.";
+        }
+    }
+}
+
+
 function signUp() {
     var signUpMessage = document.getElementById("signUpMessage");
     var email = document.getElementById("signUpEmail").value.trim();
@@ -37,7 +59,7 @@ function signUp() {
     var repeatPassword = document.getElementById("repeatPassword").value;
 
     if (!email || !firstName || !familyName || !gender || !city || !country || !password || !repeatPassword) {
-        signUpMessage.innerHTML = "Missing input";
+        signUpMessage.innerHTML = "You forgot to enter required credentials";
         return;
     }
 
@@ -62,16 +84,21 @@ function signUp() {
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
-
-            if (!response.success) {
-                signUpMessage.innerHTML = response.message;
-                return;
-            }
-
-            signUpMessage.innerHTML = response.message;
-            document.getElementById("signUpForm").reset();
-        }
+            
+            if (xhr.status == 201){
+                message = "User succesfully created!"
+                document.getElementById("signUpMessage").innerHTML = message;
+            } else if (xhr.status == 400){
+                message = "You are missing, or entered incorrect input"
+                document.getElementById("signUpMessage").innerHTML = message;
+            } else if (xhr.status == 409){
+                message = "A user with that email already exists"
+                document.getElementById("signUpMessage").innerHTML = message;            
+            } else
+                message = "Unexpected error, user could not be created"
+                document.getElementById("signUpMessage").innerHTML = message;
+            
+        } 
     };
 
     xhr.send(JSON.stringify({email: email, password: password, firstName: firstName, familyName: familyName, gender: gender, city: city, country: country
@@ -88,43 +115,29 @@ function signIn(){
 
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4){
-            var response = JSON.parse(xhr.responseText);
 
-            if (!response.success){
-                document.getElementById("signInMessage").innerHTML = response.message;
-                return;
+            if (xhr.status == 200){
+                token = xhr.getResponseHeader("Authorization");
+                console.log("Token:", token);
+
+                socket = new WebSocket("ws://localhost:5000/ws?token=" + encodeURIComponent(token));
+                socket.onmessage = handleSocketMessage;
+                
+                localStorage.setItem("token", token);
+                displayView(profileview);
+                showInfo();
+            } else if (xhr.status == 400){
+                message = "You forgot to enter required credentials"
+                document.getElementById("signInMessage").innerHTML = message;
+            } else if (xhr.status == 401){
+                message = "You entered a incorrect email or password"
+                document.getElementById("signInMessage").innerHTML = message;
+            } else {
+                message = "unexpected error, could not sign in"
+                document.getElementById("signInMessage").innerHTML = message; 
             }
-
-            token = xhr.getResponseHeader("Authorization");
-            console.log("Token:", token);
-
-            socket = new WebSocket("ws://localhost:5000/ws?token=" + encodeURIComponent(token));
-
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-
-                if (data.type === "force_logout") {
-                    token = null;
-                    localStorage.removeItem("token");
-
-                    if (socket) {
-                        socket.close();
-                        socket = null;
-                    }
-
-                    displayView(welcomeview);
-
-                    const msg = document.getElementById("signInMessage");
-                    if (msg) {
-                        msg.innerHTML = "You were signed out because your account was used somewhere else.";
-                    }
-                    return;
-                }
-            };
-            localStorage.setItem("token", token);
-            displayView(profileview);
-            showInfo();
-        }
+               
+        } 
     };
 
     xhr.send(JSON.stringify({email: username, password: password}));
@@ -169,22 +182,30 @@ function changePassword() {
     xhr.setRequestHeader("Authorization", token);
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200){
+                message = "password was succesfully changed!"
+                document.getElementById("passwordMessage").innerHTML = message;
 
-            if (!response.success) {
-                passwordMessage.innerHTML = response.message;
-                return;
+                document.getElementById("old_password").value = "";
+                document.getElementById("new_password").value = "";
+                document.getElementById("rpt_new_password").value = "";
+            } else if (xhr.status == 400){
+                message = "Ditta gamla lösenord är fel, eller så är ditt nya för kort"
+                document.getElementById("passwordMessage").innerHTML = message;
+            } else if (xhr.status == 401){
+                message = "Missing credentials (token error)"
+                document.getElementById("passwordMessage").innerHTML = message;                
+            } else if (xhr.status == 500){
+                message = "Server error"
+                document.getElementById("passwordMessage").innerHTML = message;
+            } else {
+                message = "unexpected error"
+                document.getElementById("passwordMessage").innerHTML = message;
             }
-            passwordMessage.innerHTML = response.message;
-
-            document.getElementById("old_password").value = "";
-            document.getElementById("new_password").value = "";
-            document.getElementById("rpt_new_password").value = "";
         }
     };
 
-    xhr.send(JSON.stringify({
-        oldPassword: oldPassword, newPassword: newPassword}));
+    xhr.send(JSON.stringify({oldPassword: oldPassword, newPassword: newPassword}));
 }
 
 function signOut() {
@@ -194,24 +215,26 @@ function signOut() {
 
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
-
-            if (!response.success) {
-                console.log(response.message);
-                return;
+            if (xhr.status == 200){
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+                token = null;
+                localStorage.removeItem("token");
+                displayView(welcomeview);
+            } else if (xhr.status == 400){
+                message = "lowkey servererror"
+                document.getElementById("passwordMessage").innerHTML = message;    
+            } else if (xhr.status == 401){
+                message = "Invalid token, you are cooked"
+                document.getElementById("passwordMessage").innerHTML = message;
+            } else {
+                message = "Unexpected error"
+                document.getElementById("passwordMessage").innerHTML = message;
             }
-
-            if (socket) {
-                socket.close();
-                socket = null;
-            }
-
-            token = null;
-            localStorage.removeItem("token");
-            displayView(welcomeview);
         }
     };
-
     xhr.send();
 }
 function showInfo() {
@@ -220,20 +243,21 @@ function showInfo() {
     xhr.setRequestHeader("Authorization", token);
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200){ 
+                const response = JSON.parse(xhr.responseText);
+                var user = response.data;
 
-            if (!response.success) {
-                console.log(response.message);
-                return;
+                document.getElementById("profileCity").innerHTML = user.city;
+                document.getElementById("profileFirstName").innerHTML = user.firstName;
+                document.getElementById("profileFamilyName").innerHTML = user.familyName;
+                document.getElementById("profileGender").innerHTML = user.gender;
+                document.getElementById("profileEmail").innerHTML = user.email;
+                document.getElementById("profileCountry").innerHTML = user.country;
+            } else if (xhr.status == 401){
+                message = "Invalid credentials"
+                document.getElementById("showInfoMessage").innerHTML = message;
             }
-            var user = response.data;
 
-            document.getElementById("profileCity").innerHTML = user.city;
-            document.getElementById("profileFirstName").innerHTML = user.firstName;
-            document.getElementById("profileFamilyName").innerHTML = user.familyName;
-            document.getElementById("profileGender").innerHTML = user.gender;
-            document.getElementById("profileEmail").innerHTML = user.email;
-            document.getElementById("profileCountry").innerHTML = user.country;
         }
     };
 
@@ -249,14 +273,19 @@ function postToMyWall() {
     xhr.setRequestHeader("Authorization", token);
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
-
-            if (!response.success) {
-                console.log(response.message);
-                return;
+            if (xhr.status == 201){
+                document.getElementById("wallInput").value = "";
+                reloadWall();
+            } else if (xhr.status == 400){
+                message = "Cant post empty messages"
+                document.getElementById("ownWallMessage").innerHTML = message;
+            } else if (xhr.status == 401){
+                message = "INvalid credentials"
+                document.getElementById("ownWallMessage").innerHTML = message;
+            } else {
+                message = "Unexpected error"
+                document.getElementById("ownWallMessage").innerHTML = message;
             }
-            document.getElementById("wallInput").value = "";
-            reloadWall();
         }
     };
     console.log("försöker posta");
@@ -269,22 +298,25 @@ function reloadWall() {
     xhr.setRequestHeader("Authorization", token);
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200){
+                const response = JSON.parse(xhr.responseText);
+                const wallList = document.getElementById("wallList");
+                wallList.innerHTML = "";
 
-            if (!response.success) {
-                console.log(response.message);
-                return;
+                response.data.forEach(msg => {
+                    console.log(msg);
+                    const item = document.createElement("div");
+                    item.className = "wallMessage";
+                    item.textContent = msg.sender + ": " + msg.message;
+                    wallList.appendChild(item);
+                });
+            } else if (xhr.status == 401) {
+                message = "invalid credentials"
+                document.getElementById("ownWallMessage").innerHTML = message;
+            } else {
+                message = "Unexpected error"
+                document.getElementById("ownWallMessage").innerHTML = message;
             }
-            const wallList = document.getElementById("wallList");
-            wallList.innerHTML = "";
-
-            response.data.forEach(msg => {
-                console.log(msg);
-                const item = document.createElement("div");
-                item.className = "wallMessage";
-                item.textContent = msg.sender + ": " + msg.message;
-                wallList.appendChild(item);
-            });
         }
     };
 
@@ -305,23 +337,30 @@ function browse() {
     xhr.setRequestHeader("Authorization", token);
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200){
+                const response = JSON.parse(xhr.responseText);
+                var user = response.data;
 
-            if (!response.success) {
-                browseMessage.innerHTML = response.message;
-                return;
+                document.getElementById("browseCity").innerHTML = user.city;
+                document.getElementById("browseFirstName").innerHTML = user.firstName;
+                document.getElementById("browseFamilyName").innerHTML = user.familyName;
+                document.getElementById("browseGender").innerHTML = user.gender;
+                document.getElementById("browseEmail").innerHTML = user.email;
+                document.getElementById("browseCountry").innerHTML = user.country;
+
+                browseMessage.innerHTML = "";
+                console.log("funkar");
+            } else if (xhr.status == 401){
+                message = "invalid credentials"
+                document.getElementById("browseMessage").innerHTML = message;
+            } else if (xhr.status == 404){
+                message = "User not found"
+                document.getElementById("browseMessage").innerHTML = message;
+            } else {
+                message = "Unexpected erreor"
+                document.getElementById("browseMessage").innerHTML = message;
             }
-            var user = response.data;
 
-            document.getElementById("browseCity").innerHTML = user.city;
-            document.getElementById("browseFirstName").innerHTML = user.firstName;
-            document.getElementById("browseFamilyName").innerHTML = user.familyName;
-            document.getElementById("browseGender").innerHTML = user.gender;
-            document.getElementById("browseEmail").innerHTML = user.email;
-            document.getElementById("browseCountry").innerHTML = user.country;
-
-            browseMessage.innerHTML = "";
-            console.log("funkar");
         }
     };
 
@@ -347,17 +386,20 @@ function postToOtherWall() {
     xhr.setRequestHeader("Authorization", token);
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
-
-            if (!response.success) {
-                console.log(response.message);
-                browseMessage.innerHTML = response.message;
-                return;
+            if (xhr.status == 201){
+                document.getElementById("otherWallInput").value = "";
+                browseMessage.innerHTML = "";
+                reloadOtherWall();
+            } else if (xhr.status == 400){
+                message = "Cant post empty messages"
+                document.getElementById("browseMessage").innerHTML = message;
+            } else if (xhr.status == 401){
+                message = "INvalid credentials"
+                document.getElementById("browseMessage").innerHTML = message;
+            } else {
+                message = "Unexpected error"
+                document.getElementById("browseMessage").innerHTML = message;
             }
-
-            document.getElementById("otherWallInput").value = "";
-            browseMessage.innerHTML = "";
-            reloadOtherWall();
         }
     };
     console.log("token:", token, "content:", content, "to email:", toEmail);
@@ -367,7 +409,6 @@ function postToOtherWall() {
 
 function reloadOtherWall() {
     console.log("browsingEmail:", browsingEmail);
-    var browseMessage = document.getElementById("browseMessage"); 
 
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "/getUserMessageByEmail?email=" + encodeURIComponent(browsingEmail), true);
@@ -375,22 +416,30 @@ function reloadOtherWall() {
 
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
-            var response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200){
+                var response = JSON.parse(xhr.responseText);
+                const wallList = document.getElementById("otherWallList");
+                wallList.innerHTML = "";
 
-            if (!response.success) {
-                console.log(response.message);
-                browseMessage.innerHTML = response.message;
-                return;
+                response.data.forEach(msg => {
+                    const item = document.createElement("div");
+                    item.className = "wallMessage";
+                    item.textContent = msg.sender + ": " + msg.message;
+                    wallList.appendChild(item);
+                });
+            } else if (xhr.status == 401){
+                message = "Incorrect credentials"
+                document.getElementById("browseMessage").innerHTML = message;                
+            } else if (xhr.status == 404){
+                message = "User not found, cant post message"
+                document.getElementById("browseMessage").innerHTML = message;                
+            } else {
+                message = "Unexpected error"
+                document.getElementById("browseMessage").innerHTML = message;                
+
             }
-            const wallList = document.getElementById("otherWallList");
-            wallList.innerHTML = "";
 
-            response.data.forEach(msg => {
-                const item = document.createElement("div");
-                item.className = "wallMessage";
-                item.textContent = msg.sender + ": " + msg.message;
-                wallList.appendChild(item);
-            });
+
         }
     };
 
