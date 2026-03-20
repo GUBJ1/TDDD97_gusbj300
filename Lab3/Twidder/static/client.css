@@ -103,3 +103,7 @@ body {
 #wallInput {
     margin-top: 10px;
 }
+.dragover {
+    border: 2px dashed #4a90e2;
+    background-color: #f0f7ff;
+}

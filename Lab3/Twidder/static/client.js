@@ -20,6 +20,7 @@ window.onload = function(){
 
         displayView(profileview);
         showInfo();
+        enableWallDragAndDrop();
     } else {
         displayView(welcomeview);
     }
@@ -308,8 +309,16 @@ function reloadWall() {
                     const item = document.createElement("div");
                     item.className = "wallMessage";
                     item.textContent = msg.sender + ": " + msg.message;
+
+                    item.draggable = true;
+                    item.addEventListener("dragstart", (event) => {
+                    event.dataTransfer.setData("text/plain", msg.message);
+                    });
                     wallList.appendChild(item);
+
                 });
+
+
             } else if (xhr.status == 401) {
                 message = "invalid credentials"
                 document.getElementById("ownWallMessage").innerHTML = message;
@@ -444,4 +453,23 @@ function reloadOtherWall() {
     };
 
     xhr.send();
+}
+
+function enableWallDragAndDrop() {
+    console.log("enableDragg körs");
+    
+    console.log(document.getElementById("wallInput"));
+    const postBox = document.getElementById("wallInput");
+
+    postBox.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        console.log("DRAG WORKS");
+    });
+
+    postBox.addEventListener("drop", (event) => {
+        console.log("DROP WORKS");
+        event.preventDefault();
+        const draggedText = event.dataTransfer.getData("text/plain");
+        postBox.value = draggedText;
+    });
 }
