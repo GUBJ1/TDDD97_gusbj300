@@ -126,7 +126,6 @@ function signIn(){
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/signIn", true);
     xhr.setRequestHeader("Content-Type", "application/json");
-
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4){
 
