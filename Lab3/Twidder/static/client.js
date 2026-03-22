@@ -21,32 +21,46 @@ window.onload = function(){
         displayView(profileview);
         showInfo();
         enableWallDragAndDrop();
+        connectSocket();
     } else {
         displayView(welcomeview);
     }
 };
 
+function connectSocket() {
+    socket = new WebSocket("ws://localhost:5000/ws?token=" + encodeURIComponent(token));
+    socket.onmessage = handleSocketMessage;
+}
+
 function handleSocketMessage(event) {
-    const data = JSON.parse(event.data);
+    let data;
+
+    try {
+        data = JSON.parse(event.data);
+    } catch (error) {
+        console.error("Invalid WebSocket message:", event.data);
+        return;
+    }
 
     if (data.type === "force_logout") {
         token = null;
         localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
 
-        if (socket) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
             socket.close();
-            socket = null;
         }
-
+        socket = null;
         displayView(welcomeview);
 
         const msg = document.getElementById("signInMessage");
         if (msg) {
-            msg.innerHTML = "You were signed out because your account was used somewhere else.";
+            msg.textContent = "You were signed out because your account was used somewhere else.";
         }
+
+        return;
     }
 }
-
 
 function signUp() {
     var signUpMessage = document.getElementById("signUpMessage");
@@ -98,7 +112,6 @@ function signUp() {
             } else
                 message = "Unexpected error, user could not be created"
                 document.getElementById("signUpMessage").innerHTML = message;
-            
         } 
     };
 
@@ -119,10 +132,8 @@ function signIn(){
 
             if (xhr.status == 200){
                 token = xhr.getResponseHeader("Authorization");
-                console.log("Token:", token);
 
-                socket = new WebSocket("ws://localhost:5000/ws?token=" + encodeURIComponent(token));
-                socket.onmessage = handleSocketMessage;
+                connectSocket();
                 
                 localStorage.setItem("token", token);
                 displayView(profileview);
@@ -238,6 +249,7 @@ function signOut() {
     };
     xhr.send();
 }
+
 function showInfo() {
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "/getUserDataByToken", true);
@@ -255,8 +267,15 @@ function showInfo() {
                 document.getElementById("profileEmail").innerHTML = user.email;
                 document.getElementById("profileCountry").innerHTML = user.country;
             } else if (xhr.status == 401){
-                message = "Invalid credentials"
-                document.getElementById("showInfoMessage").innerHTML = message;
+                token = null;
+                localStorage.removeItem("token");
+
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+
+                displayView(welcomeview);
             }
 
         }
@@ -264,6 +283,7 @@ function showInfo() {
 
     xhr.send(); 
 }
+
 function postToMyWall() {
     const content = document.getElementById("wallInput").value.trim();
     if (!content) return;
@@ -281,15 +301,21 @@ function postToMyWall() {
                 message = "Cant post empty messages"
                 document.getElementById("ownWallMessage").innerHTML = message;
             } else if (xhr.status == 401){
-                message = "INvalid credentials"
-                document.getElementById("ownWallMessage").innerHTML = message;
+                token = null;
+                localStorage.removeItem("token");
+
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+
+                displayView(welcomeview);
             } else {
                 message = "Unexpected error"
                 document.getElementById("ownWallMessage").innerHTML = message;
             }
         }
     };
-    console.log("försöker posta");
     xhr.send(JSON.stringify({message: content, receiver: browsingEmail}));
 }
 
@@ -305,7 +331,6 @@ function reloadWall() {
                 wallList.innerHTML = "";
 
                 response.data.forEach(msg => {
-                    console.log(msg);
                     const item = document.createElement("div");
                     item.className = "wallMessage";
                     item.textContent = msg.sender + ": " + msg.message;
@@ -320,8 +345,15 @@ function reloadWall() {
 
 
             } else if (xhr.status == 401) {
-                message = "invalid credentials"
-                document.getElementById("ownWallMessage").innerHTML = message;
+                token = null;
+                localStorage.removeItem("token");
+
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+
+                displayView(welcomeview);
             } else {
                 message = "Unexpected error"
                 document.getElementById("ownWallMessage").innerHTML = message;
@@ -358,10 +390,16 @@ function browse() {
                 document.getElementById("browseCountry").innerHTML = user.country;
 
                 browseMessage.innerHTML = "";
-                console.log("funkar");
             } else if (xhr.status == 401){
-                message = "invalid credentials"
-                document.getElementById("browseMessage").innerHTML = message;
+                token = null;
+                localStorage.removeItem("token");
+
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+
+                displayView(welcomeview);
             } else if (xhr.status == 404){
                 message = "User not found"
                 document.getElementById("browseMessage").innerHTML = message;
@@ -375,6 +413,7 @@ function browse() {
 
     xhr.send();
 }
+
 function postToOtherWall() {
     var toEmail = document.getElementById("otherEmail").value.trim();
     var content = document.getElementById("otherWallInput").value.trim();
@@ -403,22 +442,26 @@ function postToOtherWall() {
                 message = "Cant post empty messages"
                 document.getElementById("browseMessage").innerHTML = message;
             } else if (xhr.status == 401){
-                message = "INvalid credentials"
-                document.getElementById("browseMessage").innerHTML = message;
+                token = null;
+                localStorage.removeItem("token");
+
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+
+                displayView(welcomeview);
             } else {
                 message = "Unexpected error"
                 document.getElementById("browseMessage").innerHTML = message;
             }
         }
     };
-    console.log("token:", token, "content:", content, "to email:", toEmail);
 
     xhr.send(JSON.stringify({receiver: toEmail, message: content}));
 }
 
 function reloadOtherWall() {
-    console.log("browsingEmail:", browsingEmail);
-
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "/getUserMessageByEmail?email=" + encodeURIComponent(browsingEmail), true);
     xhr.setRequestHeader("Authorization", token);
@@ -437,8 +480,15 @@ function reloadOtherWall() {
                     wallList.appendChild(item);
                 });
             } else if (xhr.status == 401){
-                message = "Incorrect credentials"
-                document.getElementById("browseMessage").innerHTML = message;                
+                token = null;
+                localStorage.removeItem("token");
+
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+
+                displayView(welcomeview);              
             } else if (xhr.status == 404){
                 message = "User not found, cant post message"
                 document.getElementById("browseMessage").innerHTML = message;                
@@ -456,18 +506,13 @@ function reloadOtherWall() {
 }
 
 function enableWallDragAndDrop() {
-    console.log("enableDragg körs");
-    
-    console.log(document.getElementById("wallInput"));
     const postBox = document.getElementById("wallInput");
 
     postBox.addEventListener("dragover", (event) => {
         event.preventDefault();
-        console.log("DRAG WORKS");
     });
 
     postBox.addEventListener("drop", (event) => {
-        console.log("DROP WORKS");
         event.preventDefault();
         const draggedText = event.dataTransfer.getData("text/plain");
         postBox.value = draggedText;

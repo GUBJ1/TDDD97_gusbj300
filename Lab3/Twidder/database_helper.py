@@ -20,6 +20,46 @@ def generateToken(length=32):
     token = ''.join(secrets.choice(alphabet) for _ in range(length))
     return token
 
+def storeToken(email, token):
+    try:
+        getDb().execute("INSERT INTO tokens (token, email) VALUES (?, ?)",(token, email))
+        getDb().commit()
+
+        return True
+    except Exception as e:
+        print("Database error", e)
+        return False
+
+def deleteToken(token):
+    try:
+        getDb().execute("DELETE FROM tokens WHERE token=?", (token,))
+        getDb().commit()
+        return True
+    
+    except Exception as e:
+        print ("DATABASE ERROR")
+        return False
+
+def deleteTokenByEmail(email):
+    try:
+        getDb().execute("DELETE FROM tokens WHERE email=?",(email,))
+        getDb().commit()
+        return True
+
+    except Exception as e:
+        print("Database error", e)
+        return False
+
+def getEmailByToken(token):
+    try:
+        cursor = getDb().execute("SELECT email FROM tokens WHERE token = ?",(token,))
+        row = cursor.fetchone()
+        return row["email"]
+
+    except Exception as e:
+        print ("DATABASE ERROR", e)
+        return False
+
 def quit():
     db = getattr(g, "database", None)
     if db is not None:
@@ -80,8 +120,7 @@ def getUserMsg(email):
 
 def createMessage(email, receiver, message):
     try:
-        getDb().execute("INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?)",
-                        (email, receiver, message))
+        getDb().execute("INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?)",(email, receiver, message))
         getDb().commit()
 
         return True

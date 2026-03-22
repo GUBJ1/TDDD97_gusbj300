@@ -11,8 +11,6 @@ sock = Sock(app)
 def root():
     return app.send_static_file("client.html")
 
-signedInUsers={}
-userTokens = {}    
 userSockets = {}      
 
 @app.teardown_appcontext
@@ -25,12 +23,12 @@ def close_db(exception):
 @sock.route("/ws")
 def ws_route(ws):
     token = request.args.get("token")
+    email = database_helper.getEmailByToken(token)
 
-    if not token or token not in signedInUsers:
+    if not token or email is None:
         ws.close()
         return
 
-    email = signedInUsers[token]
     userSockets[email] = ws
 
     try:
@@ -44,7 +42,6 @@ def ws_route(ws):
         if userSockets.get(email) == ws:
             userSockets.pop(email, None)
 
-
 @app.route("/signIn", methods=["POST"])
 def signIn_route():
     data = request.json
@@ -56,25 +53,20 @@ def signIn_route():
         return {"message": "missing input"}, 400
 
     if result is None:
-        print("fel mail tihi")
         return {"success": False, "message": "User not found"}, 401
     
     if result["password"] != password:
-        print("fel lösen tihi")
         return {"success": False, "message": "Wrong password!"}, 401
-    
-    old_token = userTokens.get(email)
-    old_ws = userSockets.get(email)
 
-    if old_ws:
+    if email in userSockets:
+        old_ws = userSockets[email]
         old_ws.send(json.dumps({"type": "force_logout"}))
 
-    if old_token:
-        signedInUsers.pop(old_token, None)
-
     token = database_helper.generateToken()
-    signedInUsers[token] = email
-    userTokens[email] = token
+    print("token", token)
+
+    database_helper.deleteTokenByEmail(email) #tar bort gamla
+    database_helper.storeToken(email, token)
 
     response = jsonify({"success": True, "message": "Signed in!,"})
     response.headers["Authorization"] = token
@@ -93,7 +85,7 @@ def signUp_route():
     gender = data.get("gender")
     city = data.get("city")
     country = data.get("country")
-    emailPattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' #kollar mail format
+    emailPattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
 
     existing = database_helper.findUserByEmail(email)
 
@@ -118,25 +110,18 @@ def signUp_route():
 def signOut_route():
     token = request.headers.get("Authorization")
 
-    print("token:", token)
-    print("inloggaed 2:", signedInUsers)
-
-
-
     if not token:
         return {"success": False, "message": "Missing token"}, 400
     
-    if token not in signedInUsers:
+    email = database_helper.getEmailByToken(token)
+
+    if email is None:
         return {"message": "invalid token"}, 401
 
-    print(userTokens)
-    email = signedInUsers.pop(token, None)
-    print(userTokens)
+    success = database_helper.deleteToken(token)
 
-    if userTokens.get(email) == token:
-        userTokens.pop(email, None)
-    print(userTokens)
-
+    if not success:
+        return {"success": False, "message": "Failed to delete token"}, 500
 
     return {"success": True, "message": "Successfully signed out"}, 200
 
@@ -148,12 +133,8 @@ def changePassword_route():
     oldPassword = data.get("oldPassword")
     newPassword = data.get("newPassword")
 
-    print("token,",token)
-    email = signedInUsers.get(token)
-    print("email,", email)
+    email = database_helper.getEmailByToken(token)
 
-
-    print("email,",email)
     if email is None:
         return {"success": False, "message": "Token error!"}, 401
 
@@ -175,26 +156,28 @@ def changePassword_route():
 
 @app.route("/getUserDataByToken", methods=["GET"])
 def getUserDataByToken_route():
-    print ("running showInfo")
     token = request.headers.get("Authorization")
 
-    if token not in signedInUsers:
+    email = database_helper.getEmailByToken(token)
+
+    if email is None:
         return {"success": False, "message": "Invalid token!"}, 401
 
-    email = signedInUsers.get(token)
     result = database_helper.findUserByEmail(email)
 
     if result is None:
         return {"success": False, "message": "user not found"}, 401
     
-    print("successfully posted info")
     return jsonify({"success": True, "message": "User found", "data": dict(result)}), 200
 
 
 @app.route("/getUserDataByEmail", methods=["GET"])
 def getUserDataByEmail_route():
     token = request.headers.get("Authorization")
-    if token not in signedInUsers:
+
+    emailCheck = database_helper.getEmailByToken(token)
+
+    if emailCheck is None:
         return {"success": False, "message": "Invalid token!"}, 401
     
     email = request.args.get("email")
@@ -202,7 +185,6 @@ def getUserDataByEmail_route():
     
     if result is None:
         return {"success": False, "message": "user not found"}, 404
-
 
     return jsonify({"success": True, "message": "User found", "data": dict(result)}), 200
 
@@ -211,24 +193,27 @@ def getUserDataByEmail_route():
 def getUserMessageByToken():
     token = request.headers.get("Authorization")
 
-    if token not in signedInUsers:
+    email = database_helper.getEmailByToken(token)
+
+    if email is None:
         return {"success": False, "message": "Invalid token!"}, 401
     
-    email = signedInUsers.get(token)
     result = database_helper.getUserMsg(email)
     messages = [dict(row) for row in result]
 
     if result is None:
         return {"success": False, "message": "user not found"}, 401
     
-    print(messages)
     return jsonify({"success": True, "message": "User found", "data": messages}), 200
 
     
 @app.route("/getUserMessageByEmail", methods=["GET"])
 def getUserMessageByEmail_route():
     token = request.headers.get("Authorization")
-    if token not in signedInUsers:
+
+    emailCheck = database_helper.getEmailByToken(token)
+
+    if emailCheck is None:
         return {"success": False, "message": "Invalid token!"}, 401
 
     email = request.args.get("email")
@@ -238,8 +223,6 @@ def getUserMessageByEmail_route():
     if result is None:
         return {"success": False, "message": "user not found"}, 404
     
-    print(messages)
-    
     return jsonify({"success": True, "message": "User found", "data": messages}), 200
 
 
@@ -247,16 +230,16 @@ def getUserMessageByEmail_route():
 def postMessage_route():
     data = request.json
     token = request.headers.get("Authorization")
-    if token not in signedInUsers:
+
+    email = database_helper.getEmailByToken(token)
+
+    if email is None:
         return {"success": False, "message": "Invalid token!"}, 401
-    
-    email = signedInUsers[token]
     
     message = data.get("message")
     receiver = data.get("receiver")    
     if receiver == None:
         receiver = email
-    print("email", email, "message", message, "receiver",receiver)
 
     if len(message) == 0:
         return {"success": False, "message": "Message is empty"}, 400
@@ -271,5 +254,3 @@ def postMessage_route():
     
 if __name__ == "__main__":
     app.run(debug=True)
-
-
