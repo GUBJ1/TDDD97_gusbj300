@@ -250,7 +250,3 @@ def postMessage_route():
         return{"success": False, "message": "FEEEEEEL"}, 500
     
     return{"success": True, "message": "yay posted"}, 201
-
-    
-if __name__ == "__main__":
-    app.run(debug=True)
