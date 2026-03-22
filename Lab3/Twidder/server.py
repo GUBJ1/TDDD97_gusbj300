@@ -29,6 +29,10 @@ def ws_route(ws):
         ws.close()
         return
 
+    if email in userSockets:
+        old_ws = userSockets[email] 
+        old_ws.send(json.dumps({"type": "force_logout"}))
+
     userSockets[email] = ws
 
     try:
@@ -57,10 +61,6 @@ def signIn_route():
     
     if result["password"] != password:
         return {"success": False, "message": "Wrong password!"}, 401
-
-    if email in userSockets:
-        old_ws = userSockets[email]
-        old_ws.send(json.dumps({"type": "force_logout"}))
 
     token = database_helper.generateToken()
     print("token", token)

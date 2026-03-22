@@ -28,7 +28,7 @@ window.onload = function(){
 };
 
 function connectSocket() {
-    socket = new WebSocket("ws://localhost:5000/ws?token=" + encodeURIComponent(token));
+    socket = new WebSocket("ws://localhost:8000/ws?token=" + encodeURIComponent(token));
     socket.onmessage = handleSocketMessage;
 }
 
