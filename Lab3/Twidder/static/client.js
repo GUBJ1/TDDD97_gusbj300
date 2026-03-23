@@ -373,7 +373,7 @@ function browse() {
     }
 
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "/getUserDataByEmail?email=" + encodeURIComponent(browsingEmail), true);
+xhr.open("GET", "/getUserDataByEmail/" + encodeURIComponent(browsingEmail), true);
     xhr.setRequestHeader("Authorization", token);
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
@@ -461,8 +461,9 @@ function postToOtherWall() {
 }
 
 function reloadOtherWall() {
+    console.log("browsingEmail:", browsingEmail)
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "/getUserMessageByEmail?email=" + encodeURIComponent(browsingEmail), true);
+    xhr.open("GET", "/getUserMessageByEmail/" + encodeURIComponent(browsingEmail), true);
     xhr.setRequestHeader("Authorization", token);
 
     xhr.onreadystatechange = () => {

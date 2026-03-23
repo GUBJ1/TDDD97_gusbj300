@@ -62,6 +62,10 @@ def signIn_route():
     if result["password"] != password:
         return {"success": False, "message": "Wrong password!"}, 401
 
+    if email in userSockets:
+        old_ws = userSockets[email] 
+        old_ws.send(json.dumps({"type": "force_logout"}))
+
     token = database_helper.generateToken()
     print("token", token)
 
@@ -171,8 +175,8 @@ def getUserDataByToken_route():
     return jsonify({"success": True, "message": "User found", "data": dict(result)}), 200
 
 
-@app.route("/getUserDataByEmail", methods=["GET"])
-def getUserDataByEmail_route():
+@app.route("/getUserDataByEmail/<path:browsingEmail>", methods=["GET"])
+def getUserDataByEmail_route(browsingEmail):
     token = request.headers.get("Authorization")
 
     emailCheck = database_helper.getEmailByToken(token)
@@ -180,7 +184,7 @@ def getUserDataByEmail_route():
     if emailCheck is None:
         return {"success": False, "message": "Invalid token!"}, 401
     
-    email = request.args.get("email")
+    email = browsingEmail
     result = database_helper.findUserByEmail(email)
     
     if result is None:
@@ -207,8 +211,8 @@ def getUserMessageByToken():
     return jsonify({"success": True, "message": "User found", "data": messages}), 200
 
     
-@app.route("/getUserMessageByEmail", methods=["GET"])
-def getUserMessageByEmail_route():
+@app.route("/getUserMessageByEmail/<path:browsingEmail>", methods=["GET"])
+def getUserMessageByEmail_route(browsingEmail):
     token = request.headers.get("Authorization")
 
     emailCheck = database_helper.getEmailByToken(token)
@@ -216,7 +220,7 @@ def getUserMessageByEmail_route():
     if emailCheck is None:
         return {"success": False, "message": "Invalid token!"}, 401
 
-    email = request.args.get("email")
+    email = browsingEmail
     result = database_helper.getUserMsg(email)
     messages = [dict(row) for row in result]
 
